@@ -47,6 +47,21 @@ import wrangle
 
 ###### VISUALIZATIONS ########
 
+def get_distplot(train):
+    '''
+    creates a ditribution chart for the target variable quality
+    '''
+    # Plot the distribution of the target variable
+    plt.figure(figsize=(12, 3))
+    sns.histplot(train['quality'], kde=False, shrink=8)
+    plt.xlabel('Quality Rating')
+    plt.ylabel('Count')
+    plt.title('Distribution of Quality')
+    # Add a vertical line for the baseline 
+    plt.axvline(x=6, color='red', linestyle='--', label='Baseline')
+    plt.legend()
+    plt.show()
+    
 def get_alcohol_quality(train):
     '''
     Input:
@@ -194,6 +209,41 @@ def run_sulphates_ttest(data):
         'P-Value': [p_value],
         'Decision': [decision]})
     return results
+####### Clustering #########
+def find_clusters(train, variable1, variable2, variable3):
+    '''
+    Inputs:
+    df, variable1, variable2, variable3 as strings
+    in search of potential clusters
+    Outputs:
+    Plot with clusters & 
+    new_df
+    '''
+    # create X_train
+    X = train[[variable1, variable2, variable3]]
+    # initiate kmeans
+    kmeans = KMeans(3)
+    kmeans.fit(X)
+    kmeans.predict(X)
+    # create new column with cluster
+    train['cluster'] = kmeans.predict(X)
+    
+    kmeans.cluster_centers_
+    centroids = pd.DataFrame(kmeans.cluster_centers_, columns=X.columns[:3])
+    train['cluster'] = 'cluster_' + train.cluster.astype(str)
+    # begin plotting
+    plt.figure(figsize=(14,9))
+    plt.figure(figsize=(14,9))
+    
+    sns.scatterplot(x=variable1, y=variable2, data=train, hue='cluster')
+    centroids.plot.scatter(x=variable1, y=variable2, ax= plt.gca(), color='k', alpha = 0.3, s=400)
+    plt.title('Visualizing Cluster Centers')
+    
+    unique_clusters = train['cluster'].unique()
+    cluster_labels = [f'Cluster {cluster}' for cluster in unique_clusters]
+
+    plt.legend(bbox_to_anchor=(1,1), loc='upper left')
+    return train
 
 
 
@@ -267,7 +317,7 @@ def get_models(train, validate, test):
     models = create_models(seed=123)
     X_train_scaled, y_train, X_validate_scaled, y_validate, X_test_scaled, y_test = scale_data(train, validate, test, ['alcohol', 'volatile_acidity','sulphates','citric_acid','free_sulfur_dioxide','ph','fixed_acidity','residual_sugar','white','chlorides','density'])
     # initialize results dataframe
-    results = pd.DataFrame(columns=['model', 'set', 'accuracy', 'recall'])
+    results = pd.DataFrame(columns=['model', 'set', 'accuracy'])
     
     # loop through models and fit/predict on train and validate sets
     for name, model in models:
@@ -296,4 +346,48 @@ def get_models(train, validate, test):
         # print classifier accuracy and recall
         print('Classifier: {}, Train Accuracy: {}, Validation Accuracy: {}'.format(name, train_accuracy, val_accuracy))
         '''
+    return results,X_train_scaled, X_test_scaled,y_test
+
+def get_test_model():
+    '''
+    This will run the k nearest niehbor model on the test set
+    '''
+    knn= KNeighborsClassifier(n_neighbors=100)
+    knn.fit(X_train_scaled, y_train)
+    y_pred = knn.predict(X_test_scaled)
+    accuracy = accuracy_score(y_test, y_pred)
+    '''
+    #left here incase i want to go back to printed list, rather than df
+    print('Logistic Regression')
+    print(f'Accuracy on test: {round(accuracy*100,2)}')
+    '''
+    results_df = pd.DataFrame({'Model': 'Logistic Regression','Accuracy': [accuracy]})
+    return results_df
+
+def cluster_model(new_train, y_train):
+    '''
+    modeling for cluster df
+    '''
+    dummy_df = pd.get_dummies(new_train['cluster'], drop_first=True)
+    new_train = pd.concat([new_train, dummy_df], axis=1)
+    new_train1 = new_train.drop(columns='cluster')
+    
+    # create models list
+    models = f.create_models(seed=123)
+    # initialize results dataframe
+    results = pd.DataFrame(columns=['model', 'set', 'accuracy'])
+    
+    # loop through models and fit/predict on train
+    for name, model in models:
+        # fit the model with new scaled training data
+        model.fit(new_train1, y_train)
+        
+        # make predictions with the new scaled training data
+        train_predictions = model.predict(new_train1)
+        
+        # calculate training accuracy
+        train_accuracy = accuracy_score(y_train, train_predictions)
+        
+        # append results to dataframe
+        results = results.append({'model': name, 'set': 'train', 'accuracy': train_accuracy}, ignore_index=True)
     return results
