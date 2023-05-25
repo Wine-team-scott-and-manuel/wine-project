@@ -21,6 +21,7 @@ import seaborn as sns
 import sklearn
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import mutual_info_score
+from sklearn.cluster import KMeans
 
 from sklearn.model_selection import train_test_split
 
@@ -346,9 +347,9 @@ def get_models(train, validate, test):
         # print classifier accuracy and recall
         print('Classifier: {}, Train Accuracy: {}, Validation Accuracy: {}'.format(name, train_accuracy, val_accuracy))
         '''
-    return results,X_train_scaled, X_test_scaled,y_test
+    return results,X_train_scaled, X_test_scaled,y_test,y_train
 
-def get_test_model():
+def get_test_model(X_train_scaled,y_test,y_train,X_test_scaled):
     '''
     This will run the k nearest niehbor model on the test set
     '''
@@ -358,10 +359,10 @@ def get_test_model():
     accuracy = accuracy_score(y_test, y_pred)
     '''
     #left here incase i want to go back to printed list, rather than df
-    print('Logistic Regression')
+    print('Knn')
     print(f'Accuracy on test: {round(accuracy*100,2)}')
     '''
-    results_df = pd.DataFrame({'Model': 'Logistic Regression','Accuracy': [accuracy]})
+    results_df = pd.DataFrame({'Model': 'Knn','Accuracy': [accuracy]})
     return results_df
 
 def cluster_model(new_train, y_train):
